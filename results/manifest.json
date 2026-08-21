@@ -1,0 +1,215 @@
+{
+  "generated_utc": "2026-08-21T02:43:00+00:00",
+  "git_hash": "22b085dc9b79d001b91fe155af286da853639809-dirty",
+  "python": "3.14.5",
+  "platform": "macOS-26.6-arm64-arm-64bit-Mach-O",
+  "config": {
+    "universe": {
+      "tickers": [
+        "HDFCBANK.NS",
+        "ICICIBANK.NS",
+        "AXISBANK.NS",
+        "KOTAKBANK.NS",
+        "SBIN.NS",
+        "INDUSINDBK.NS",
+        "FEDERALBNK.NS",
+        "BANKBARODA.NS",
+        "PNB.NS",
+        "CANBK.NS",
+        "IDFCFIRSTB.NS",
+        "RBLBANK.NS",
+        "AUBANK.NS",
+        "BANDHANBNK.NS"
+      ],
+      "benchmark": "^NSEI",
+      "start": "2016-01-01",
+      "end": "2026-08-01"
+    },
+    "windows": {
+      "formation_months": 12,
+      "trading_months": 6,
+      "step_months": 6
+    },
+    "selection": {
+      "pvalue_threshold": 0.05,
+      "max_pairs": 5,
+      "min_observations": 200,
+      "min_spread_std": 1e-06
+    },
+    "signals": {
+      "entry_z": 2.0,
+      "exit_z": 0.5,
+      "stop_z": 4.0,
+      "max_holding_days": 60
+    },
+    "costs": {
+      "bps_per_leg": 20.0
+    },
+    "backtest": {
+      "capital_per_pair": 100000.0,
+      "trading_days_per_year": 252,
+      "risk_free_annual": 0.06
+    },
+    "run": {
+      "seed": 20260821,
+      "cache_dir": "data/cache",
+      "results_dir": "results",
+      "figures_dir": "docs/figures"
+    }
+  },
+  "windows": [
+    {
+      "index": 0,
+      "formation_start": "2016-01-01",
+      "formation_end": "2016-12-30",
+      "trading_start": "2017-01-02",
+      "trading_end": "2017-06-30"
+    },
+    {
+      "index": 1,
+      "formation_start": "2016-07-01",
+      "formation_end": "2017-06-30",
+      "trading_start": "2017-07-03",
+      "trading_end": "2017-12-29"
+    },
+    {
+      "index": 2,
+      "formation_start": "2017-01-02",
+      "formation_end": "2017-12-29",
+      "trading_start": "2018-01-01",
+      "trading_end": "2018-06-29"
+    },
+    {
+      "index": 3,
+      "formation_start": "2017-07-03",
+      "formation_end": "2018-06-29",
+      "trading_start": "2018-07-02",
+      "trading_end": "2018-12-31"
+    },
+    {
+      "index": 4,
+      "formation_start": "2018-01-01",
+      "formation_end": "2018-12-31",
+      "trading_start": "2019-01-01",
+      "trading_end": "2019-06-28"
+    },
+    {
+      "index": 5,
+      "formation_start": "2018-07-02",
+      "formation_end": "2019-06-28",
+      "trading_start": "2019-07-01",
+      "trading_end": "2019-12-31"
+    },
+    {
+      "index": 6,
+      "formation_start": "2019-01-01",
+      "formation_end": "2019-12-31",
+      "trading_start": "2020-01-01",
+      "trading_end": "2020-06-30"
+    },
+    {
+      "index": 7,
+      "formation_start": "2019-07-01",
+      "formation_end": "2020-06-30",
+      "trading_start": "2020-07-01",
+      "trading_end": "2020-12-31"
+    },
+    {
+      "index": 8,
+      "formation_start": "2020-01-01",
+      "formation_end": "2020-12-31",
+      "trading_start": "2021-01-01",
+      "trading_end": "2021-06-30"
+    },
+    {
+      "index": 9,
+      "formation_start": "2020-07-01",
+      "formation_end": "2021-06-30",
+      "trading_start": "2021-07-01",
+      "trading_end": "2021-12-31"
+    },
+    {
+      "index": 10,
+      "formation_start": "2021-01-01",
+      "formation_end": "2021-12-31",
+      "trading_start": "2022-01-03",
+      "trading_end": "2022-06-30"
+    },
+    {
+      "index": 11,
+      "formation_start": "2021-07-01",
+      "formation_end": "2022-06-30",
+      "trading_start": "2022-07-01",
+      "trading_end": "2022-12-30"
+    },
+    {
+      "index": 12,
+      "formation_start": "2022-01-03",
+      "formation_end": "2022-12-30",
+      "trading_start": "2023-01-02",
+      "trading_end": "2023-06-30"
+    },
+    {
+      "index": 13,
+      "formation_start": "2022-07-01",
+      "formation_end": "2023-06-30",
+      "trading_start": "2023-07-03",
+      "trading_end": "2023-12-29"
+    },
+    {
+      "index": 14,
+      "formation_start": "2023-01-02",
+      "formation_end": "2023-12-29",
+      "trading_start": "2024-01-01",
+      "trading_end": "2024-06-28"
+    },
+    {
+      "index": 15,
+      "formation_start": "2023-07-03",
+      "formation_end": "2024-06-28",
+      "trading_start": "2024-07-01",
+      "trading_end": "2024-12-31"
+    },
+    {
+      "index": 16,
+      "formation_start": "2024-01-01",
+      "formation_end": "2024-12-31",
+      "trading_start": "2025-01-01",
+      "trading_end": "2025-06-30"
+    },
+    {
+      "index": 17,
+      "formation_start": "2024-07-01",
+      "formation_end": "2025-06-30",
+      "trading_start": "2025-07-01",
+      "trading_end": "2025-12-31"
+    },
+    {
+      "index": 18,
+      "formation_start": "2025-01-01",
+      "formation_end": "2025-12-31",
+      "trading_start": "2026-01-01",
+      "trading_end": "2026-06-30"
+    }
+  ],
+  "n_trades": 1008,
+  "oos_days": 2347,
+  "headline": {
+    "gross": {
+      "total_return_%": 10.11422820537895,
+      "ann_return_%": 1.0398694925300989,
+      "ann_vol_%": 9.53801553173242,
+      "sharpe": -0.5200379985719081,
+      "max_drawdown_%": -21.23959613583696,
+      "days": 2347
+    },
+    "net": {
+      "total_return_%": -61.813195717935486,
+      "ann_return_%": -9.820137719761535,
+      "ann_vol_%": 9.575348350936268,
+      "sharpe": -1.65217359619242,
+      "max_drawdown_%": -62.156424189644355,
+      "days": 2347
+    }
+  }
+}

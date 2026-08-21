@@ -1,0 +1,60 @@
+{
+  "gross": {
+    "total_return_%": 10.11422820537895,
+    "ann_return_%": 1.0398694925300989,
+    "ann_vol_%": 9.53801553173242,
+    "sharpe": -0.5200379985719081,
+    "max_drawdown_%": -21.23959613583696,
+    "days": 2347
+  },
+  "net": {
+    "total_return_%": -61.813195717935486,
+    "ann_return_%": -9.820137719761535,
+    "ann_vol_%": 9.575348350936268,
+    "sharpe": -1.65217359619242,
+    "max_drawdown_%": -62.156424189644355,
+    "days": 2347
+  },
+  "benchmark_universe": {
+    "total_return_%": 233.66927346580576,
+    "ann_return_%": 13.812259138084325,
+    "ann_vol_%": 25.30600048118867,
+    "sharpe": 0.3087117280303383,
+    "max_drawdown_%": -57.951650217063474,
+    "days": 2347
+  },
+  "benchmark_nifty": {
+    "total_return_%": 191.55061899184983,
+    "ann_return_%": 12.175200772858874,
+    "ann_vol_%": 16.34606916543068,
+    "sharpe": 0.37777894552890035,
+    "max_drawdown_%": -38.43985245274205,
+    "days": 2347
+  },
+  "trades": {
+    "n_trades": 1008,
+    "win_rate_%": 32.93650793650794,
+    "avg_holding_days": 4.650793650793651,
+    "avg_pnl_net": -361.97381164493083,
+    "total_cost": 404056.75636229373
+  },
+  "neutrality_net": {
+    "beta_to_market": 0.03369823640808856,
+    "corr_to_market": 0.05752623120241779,
+    "r_squared": 0.003309267276354026,
+    "overlap_days": 2347
+  },
+  "neutrality_gross": {
+    "beta_to_market": 0.03334875505511152,
+    "corr_to_market": 0.057152460582421266,
+    "r_squared": 0.0032664037506252167,
+    "overlap_days": 2347
+  },
+  "selection": {
+    "pair_windows": 77,
+    "avg_pairs_per_window": 4.052631578947368,
+    "median_pvalue": 0.015327651784245543,
+    "median_half_life_days": 6.810090527219264,
+    "unique_pairs": 45
+  }
+}
