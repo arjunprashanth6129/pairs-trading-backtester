@@ -116,3 +116,81 @@ def fit_pair(
         mean=float(sp.mean()), std=sd,
         pvalue=float(pvalue), half_life=half_life(sp),
     )
+
+
+# ----------------------------------------------------------------------
+# Cointegration: the gate
+# ----------------------------------------------------------------------
+#
+# Correlation and cointegration answer different questions, and using the first
+# where the second belongs is the most common way this strategy fails.
+#
+# Correlation asks whether two series move together day to day. Two stocks can
+# be highly correlated and still drift apart forever: if both rise, but one rises
+# faster, every daily move agrees in direction while the gap between them grows
+# without limit. A spread built on that pair has no mean to revert to, so a
+# z-score computed against a historical mean is measuring a distance from a
+# number that is no longer meaningful.
+#
+# Cointegration asks something stricter: is there a fixed combination of the two
+# whose value is stationary - wandering around a constant mean with finite
+# variance rather than drifting? If y - beta*x is stationary, then when it is far
+# from its mean there is a statistical reason to expect it to come back, which is
+# precisely the bet the strategy places. Correlation says the two walk in step;
+# cointegration says they are tied together by a rope of fixed length.
+#
+# Engle-Granger tests this in two steps: regress y on x, then test the residual
+# for a unit root with an augmented Dickey-Fuller test. The null hypothesis is
+# NO cointegration, so a small p-value is evidence the residual is stationary.
+
+def engle_granger(y: pd.Series, x: pd.Series) -> float:
+    """Engle-Granger cointegration p-value. Small means cointegrated."""
+    from statsmodels.tsa.stattools import coint
+
+    try:
+        _, pvalue, _ = coint(y.to_numpy(float), x.to_numpy(float),
+                             trend="c", autolag="aic")
+        return float(pvalue)
+    except Exception:
+        return float("nan")
+
+
+def select_pairs(
+    formation: pd.DataFrame,
+    pvalue_threshold: float,
+    max_pairs: int,
+    min_observations: int,
+    min_spread_std: float,
+) -> list[PairParams]:
+    """Test every candidate pair on the formation window and keep the best.
+
+    Ordering matters here. The pair is oriented so that the leg with the larger
+    average price is the dependent one, which keeps the hedge ratio near unity
+    and avoids the numerically awkward case of regressing a 50-rupee stock on a
+    1,900-rupee one. Engle-Granger is not symmetric - testing y on x and x on y
+    gives different p-values - so a fixed rule is better than an arbitrary one.
+
+    Both the test and the fit see only `formation`.
+    """
+    cols = list(formation.columns)
+    if len(formation) < min_observations:
+        return []
+
+    means = formation.mean()
+    out: list[PairParams] = []
+
+    for i in range(len(cols)):
+        for j in range(i + 1, len(cols)):
+            a, b = cols[i], cols[j]
+            y, x = (a, b) if means[a] >= means[b] else (b, a)
+            p = engle_granger(formation[y], formation[x])
+            if not np.isfinite(p) or p > pvalue_threshold:
+                continue
+            params = fit_pair(formation, y, x, pvalue=p,
+                              min_spread_std=min_spread_std)
+            if params is not None:
+                out.append(params)
+
+    # Strongest evidence of cointegration first.
+    out.sort(key=lambda pp: pp.pvalue)
+    return out[:max_pairs]

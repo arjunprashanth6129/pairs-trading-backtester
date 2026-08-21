@@ -9,7 +9,7 @@ import pandas as pd
 
 from . import config, data, metrics
 from .backtest import combine, run_pair
-from .pairs import fit_pair
+from .pairs import select_pairs
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -32,26 +32,36 @@ def main(argv: list[str] | None = None) -> int:
         w["step_months"])
     print(f"  {len(windows)} formation->trading windows")
 
-    # Skeleton: one hardcoded pair, so the loop can be verified before
-    # cointegration selection is layered on top of it.
-    Y, X = "HDFCBANK.NS", "ICICIBANK.NS"
-    print(f"\n2. pair (hardcoded for now): {Y} ~ {X}")
+    print("\n2. pair selection (cointegration, formation windows only)")
+    s, b, sel_cfg = cfg["signals"], cfg["backtest"], cfg["selection"]
+    frames, all_trades, chosen = [], [], []
 
-    s, b = cfg["signals"], cfg["backtest"]
-    frames, all_trades = [], []
     for win in windows:
         f = data.slice_formation(prices, win)
         t = data.slice_trading(prices, win)
-        params = fit_pair(f, Y, X,
-                          min_spread_std=cfg["selection"]["min_spread_std"])
-        if params is None:
-            continue
-        res = run_pair(t, params, win.index, s["entry_z"], s["exit_z"],
-                       s["stop_z"], s["max_holding_days"],
-                       cfg["costs"]["bps_per_leg"], b["capital_per_pair"])
-        frames.append(combine([res], t.index))
-        if len(res.trades):
-            all_trades.append(res.trades)
+        selected = select_pairs(
+            f, sel_cfg["pvalue_threshold"], sel_cfg["max_pairs"],
+            sel_cfg["min_observations"], sel_cfg["min_spread_std"])
+        for pp in selected:
+            chosen.append({"window": win.index, **win.as_dict(),
+                           "pair": pp.key(), **pp.as_dict()})
+
+        results = [
+            run_pair(t, pp, win.index, s["entry_z"], s["exit_z"], s["stop_z"],
+                     s["max_holding_days"], cfg["costs"]["bps_per_leg"],
+                     b["capital_per_pair"])
+            for pp in selected
+        ]
+        frames.append(combine(results, t.index))
+        all_trades += [r.trades for r in results if len(r.trades)]
+
+    picks = pd.DataFrame(chosen)
+    n_per = picks.groupby("window").size() if len(picks) else pd.Series(dtype=int)
+    print(f"  {len(picks)} pair-windows selected, "
+          f"{n_per.mean():.1f} per window on average")
+    if len(picks):
+        print(f"  median p-value {picks['pvalue'].median():.4f}  "
+              f"median half-life {picks['half_life'].replace([np.inf], np.nan).median():.1f}d")
 
     print("\n3. backtest")
     port = pd.concat(frames).sort_index()
