@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
+# Cached price pulls are regenerable from stage 1; the committed results are not.
+data/cache/

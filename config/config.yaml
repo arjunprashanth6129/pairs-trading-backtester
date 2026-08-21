@@ -1,0 +1,71 @@
+# Every knob the pipeline reads. Nothing is hardcoded in the modules.
+
+universe:
+  # NSE-listed banks. A sector where pairs plausibly exist: these firms share
+  # a rate environment, a regulator and a credit cycle, so a persistent
+  # long-run relationship between their prices is economically plausible
+  # rather than a coincidence of one sample.
+  tickers:
+    - HDFCBANK.NS
+    - ICICIBANK.NS
+    - AXISBANK.NS
+    - KOTAKBANK.NS
+    - SBIN.NS
+    - INDUSINDBK.NS
+    - FEDERALBNK.NS
+    - BANKBARODA.NS
+    - PNB.NS
+    - CANBK.NS
+    - IDFCFIRSTB.NS
+    - RBLBANK.NS
+    - AUBANK.NS
+    - BANDHANBNK.NS
+  # Broad-market series, used only to measure the strategy's beta. It is never
+  # traded and never enters pair selection.
+  benchmark: ^NSEI
+  start: "2016-01-01"
+  end: "2026-08-01"
+
+windows:
+  # Formation: where pairs are chosen and parameters fitted.
+  # Trading: the later, disjoint stretch those parameters are applied to.
+  formation_months: 12
+  trading_months: 6
+  # Roll forward by the trading length, so trading windows tile the timeline
+  # without overlapping each other.
+  step_months: 6
+
+selection:
+  # Engle-Granger p-value below which a pair is considered cointegrated.
+  pvalue_threshold: 0.05
+  # Keep at most this many pairs per formation window, best p-value first.
+  max_pairs: 5
+  # A pair must have at least this many overlapping observations to be tested.
+  min_observations: 200
+  # Reject pairs whose formation spread barely moves; a spread with almost no
+  # variance produces enormous z-scores from rounding noise.
+  min_spread_std: 1.0e-6
+
+signals:
+  entry_z: 2.0        # open when |z| crosses this
+  exit_z: 0.5         # close when |z| falls back inside this
+  stop_z: 4.0         # abandon the trade if |z| runs past this
+  max_holding_days: 60  # and abandon it if it simply never reverts
+
+costs:
+  # Charged on every leg of every trade, on the traded notional.
+  # 5 bps brokerage + STT/stamp, 10 bps half-spread, 5 bps slippage.
+  bps_per_leg: 20.0
+
+backtest:
+  # Capital committed per open pair position, in currency units.
+  capital_per_pair: 100000.0
+  # Annualisation factor for daily NSE data.
+  trading_days_per_year: 252
+  risk_free_annual: 0.06
+
+run:
+  seed: 20260821
+  cache_dir: data/cache
+  results_dir: results
+  figures_dir: docs/figures
