@@ -1,8 +1,9 @@
 # Pairs-trading backtester
 
-A walk-forward pairs-trading backtest on eleven NSE bank stocks. Cointegration
-picks the pairs on a 12-month formation window, the next 6 months are traded on a
-fixed z-score rule, and costs are charged on both legs at entry and exit.
+A walk-forward evaluation of cointegration-based pairs trading on eleven NSE bank
+stocks. Pairs are selected by the Engle-Granger test on a 12-month formation
+period and traded over the following 6 months on a fixed z-score rule, with
+costs charged on both legs at entry and exit.
 
 **Live report:** https://arjun-quant-projects.vercel.app/pairs-trading
 &nbsp;·&nbsp; **Full write-up:** [the report](docs/REPORT.md)
@@ -15,7 +16,7 @@ and [on CVaR portfolio construction](https://github.com/arjunprashanth6129/cvar-
 
 ## Contents
 
-- [The result in brief](#the-result-in-brief)
+- [Summary of results](#summary-of-results)
 - [Quick start](#quick-start)
 - [What the pipeline does](#what-the-pipeline-does)
 - [Architecture](#architecture)
@@ -25,7 +26,7 @@ and [on CVaR portfolio construction](https://github.com/arjunprashanth6129/cvar-
 - [Tests](#tests)
 - [Extending it](#extending-it)
 
-## The result in brief
+## Summary of results
 
 19 rolling windows, 2,347 out-of-sample trading days (2017-01-02 to 2026-06-30),
 242 round trips at 20 bps per leg.
@@ -44,15 +45,18 @@ and [on CVaR portfolio construction](https://github.com/arjunprashanth6129/cvar-
 | Timed out or window ended | 41 | +₹30,833 |
 | **All trades** | **242** | **+₹46,368**, against ₹97,486 of costs |
 
-Pairs that reverted made money, but more pairs broke down and were stopped out,
-and those losses cancelled almost all of the gains. A lower cointegration
-p-value did not predict which pairs would hold. Break-even cost is 9.8 bps per
-leg. The strategy was market-neutral, with an R² of 0.003 against the Nifty.
+Trades that converged were profitable, but stop-outs outnumbered them by 1.8 to
+1 and offset almost all of their gains. The mean daily return before costs is not
+significantly different from zero (Newey-West t = 0.67), and the formation
+p-value is not associated with the stop-out rate (χ²(2) = 3.40, p = 0.18). The
+break-even cost is 9.8 bps per leg. The strategy is market-neutral, with an R² of
+0.003 against the Nifty 50.
 
 ![Gross P&L by exit reason, then costs](https://arjun-quant-projects.vercel.app/figures/pairs/pnl-by-exit.png)
 
-The [report](docs/REPORT.md) covers the method, every result, a bug in the first
-version that had overstated the loss by 8.5 points a year, and the limitations.
+The [report](docs/REPORT.md) sets out the method, the full results, the
+correction of an entry-rule error that had overstated the after-cost loss by 8.5
+percentage points a year, and the limitations.
 
 ## Quick start
 
@@ -108,8 +112,8 @@ config/config.yaml
   [7] metrics, figures, manifest, dashboard.json
 ```
 
-Selection and fitting see only the formation slice, and the backtest sees only
-the trading slice. The two never share a bar.
+Selection and estimation use only the formation period, and the backtest uses
+only the trading period. The two periods do not overlap.
 
 ## Architecture
 
@@ -134,17 +138,17 @@ docs/REPORT.md    the full write-up
 docs/figures/     committed figures from the last run
 ```
 
-`signals.py` takes a z-score series and returns trades, so the entry and exit
-rules can be tested against a hand-written path with no prices, costs or capital
-involved. `pairs.py` is the only module that estimates anything, so the
-no-lookahead property only has to be checked in one place.
+`signals.py` maps a z-score series to trades, so the entry and exit rules can be
+tested on hand-written paths without prices, costs or capital. `pairs.py` is the
+only module that estimates parameters, so the absence of look-ahead can be
+verified in one place.
 
 ### Position sizing and costs
 
 Each open position has a fixed gross notional, `capital_per_pair`: one unit of
 the dependent leg plus `|beta|` units of the other, scaled to that total. Both
-legs are real positions that have to be financed and both pay to trade, so
-sizing on gross rather than net notional is the conservative choice.
+legs must be financed and both incur costs, so positions are sized on gross
+rather than net notional.
 
 Costs are `bps_per_leg` on traded notional, charged on both legs at entry and
 again at exit. The backtest also records the cost line at 1 bp, and the cost
@@ -153,8 +157,8 @@ exactly.
 
 ## How lookahead is prevented
 
-Lookahead does not raise an error; it just produces better numbers. Three
-mechanisms keep it out, and each has a test that fails if the mechanism is
+Look-ahead does not cause a backtest to fail; it inflates its results. Three
+mechanisms prevent it, and each has a test that fails if the mechanism is
 removed.
 
 **Parameters are estimated in one function.** `pairs.fit_pair` only receives a
@@ -170,10 +174,10 @@ against its own window has mean zero by construction, and one computed against
 fixed formation parameters does not.
 
 **Execution lags the signal by one bar.** The decision uses the close of bar `i`
-and the fill is booked at the close of bar `i+1`. Same-bar fills would flatter
-this strategy in particular, because entries happen on large moves.
+and the fill is booked at the close of bar `i+1`. Same-bar fills would bias this
+strategy in particular, because entries occur on large price moves.
 
-Each guard was checked by putting the bug back and running the suite:
+Each guard was verified by reintroducing the error and running the suite:
 
 | Deliberate bug | Tests that fail |
 |---|---|
@@ -195,9 +199,9 @@ Everything lives in `config/config.yaml`. Nothing is hardcoded in the modules.
 | `backtest` | `capital_per_pair`, `trading_days_per_year`, `risk_free_annual` |
 | `run` | `seed`, output directories |
 
-The signal thresholds are conventional values chosen in advance. Tuning them on
-this data would bring lookahead back in at the parameter level, and doing it
-properly needs a third holdout period this sample does not have.
+The signal thresholds are conventional values chosen in advance. Selecting them
+by performance on this data would introduce look-ahead at the parameter level;
+doing so properly would require a further holdout period.
 
 ## Outputs
 
@@ -235,10 +239,10 @@ make test
   spread of a perfect relationship is flat, confirms OLS is not symmetric (which
   is why pairs are oriented by a fixed rule), and checks the half-life estimator
   against simulated Ornstein-Uhlenbeck processes with known reversion speed.
-- **`test_cointegration.py`** checks the selection gate. The key case builds two
-  series from identical shocks plus a small extra drift: their daily changes
-  correlate above 0.99 and Engle-Granger still rejects them, because the levels
-  separate without bound.
+- **`test_cointegration.py`** checks the selection test. The main case builds
+  two series from identical shocks plus a small additional drift: their daily
+  changes have a correlation above 0.99, yet Engle-Granger rejects cointegration
+  because the price levels diverge without bound.
 - **`test_signals.py`** covers entry, exit, stop, timeout, forced close at the
   window end, one position at a time, no entry while the spread is past the stop,
   NaN handling, and the one-bar execution lag.
@@ -246,15 +250,16 @@ make test
 
 ## Extending it
 
-In the order I would do them:
+In order of priority:
 
-- **Cap how many selected pairs share one bank.** The worst window lost ₹43,737
-  before costs, mostly on three pairs that were all short Kotak Mahindra Bank.
+- **Limit how many selected pairs share one bank.** The worst window lost
+  ₹43,737 before costs, mostly on three positions that were each short Kotak
+  Mahindra Bank.
 - **Re-test cointegration during the trading window**, using only past data, and
   stop trading a pair once it fails.
-- **A Kalman-filtered hedge ratio** so the hedge adapts within the trading
-  window. It needs its own lookahead test, because an adaptive parameter is where
-  future data most easily leaks in.
+- **A Kalman-filtered hedge ratio** that adapts during the trading window, with
+  its own look-ahead test, since an adaptively estimated parameter is the most
+  likely route for future data to enter.
 - **Johansen alongside Engle-Granger**, which handles more than two series and
   does not depend on which leg is regressed on which.
 - **Model the short leg through single-stock futures**, including basis and roll
