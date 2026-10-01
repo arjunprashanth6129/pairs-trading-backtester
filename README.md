@@ -8,10 +8,6 @@ costs charged on both legs at entry and exit.
 **Live report:** https://arjun-quant-projects.vercel.app/pairs-trading
 &nbsp;·&nbsp; **Full write-up:** [the report](docs/REPORT.md)
 
-This is the applied project in my quant portfolio, alongside two research
-studies [on momentum and market efficiency](https://github.com/arjunprashanth6129/price-prediction-linear-regression)
-and [on CVaR portfolio construction](https://github.com/arjunprashanth6129/cvar-portfolio-optimizer).
-
 ---
 
 ## Contents
