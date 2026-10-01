@@ -12,8 +12,8 @@ import sys
 import numpy as np
 import pandas as pd
 
-from . import config, data, manifest, metrics, plots
-from .backtest import combine, run_pair
+from . import config, data, export_site, manifest, metrics, plots
+from .backtest import combine, pick_example, run_pair
 from .pairs import select_pairs
 
 
@@ -107,9 +107,9 @@ def main(argv: list[str] | None = None) -> int:
           f"corr {mn['corr_to_market']:+.4f}, R2 {mn['r_squared']:.4f}")
 
     sens = metrics.cost_sensitivity(
-        trades, port["ret_gross"], b["capital_per_pair"],
+        port["ret_gross"], port["cost_1bp"],
         [0, 1, 2, 3, 5, 7.5, 10, 15, 20, 30], b["trading_days_per_year"],
-        b["risk_free_annual"], n_pairs_avg)
+        b["risk_free_annual"])
     if len(sens):
         pos = sens[sens["ann_return_%"] > 0]
         be = pos["bps_per_leg"].max() if len(pos) else 0.0
@@ -128,17 +128,17 @@ def main(argv: list[str] | None = None) -> int:
           f"cost_sensitivity.csv summary.json")
 
     plots.use_style()
-    # The example pair is the one with the most trades, so the mechanism figure
-    # actually shows entries and exits rather than a flat line.
-    ex = max((e for e in examples if len(e.trades)),
-             key=lambda e: len(e.trades), default=None)
+    ex = pick_example(examples)
     if ex is not None:
         plots.plot_pair_example(ex, s["entry_z"], s["exit_z"], s["stop_z"],
                                 figures / "pair-example.png")
-    plots.plot_equity(port, uni_ret, figures / "equity.png")
+    if len(trades):
+        plots.plot_exits(trades, figures / "pnl-by-exit.png")
+    plots.plot_equity(port, figures / "equity.png")
+    plots.plot_annual(port, figures / "annual.png")
     if len(sens):
         plots.plot_cost_sensitivity(sens, cfg["costs"]["bps_per_leg"],
-                                    figures / "cost-sensitivity.png")
+                                    len(trades), figures / "cost-sensitivity.png")
 
     manifest.write(results / "manifest.json", cfg.raw, {
         "windows": [x.as_dict() for x in windows],
@@ -147,6 +147,7 @@ def main(argv: list[str] | None = None) -> int:
         "headline": {"gross": summary["gross"], "net": summary["net"]},
     })
     print("  results/manifest.json")
+    export_site.main()
 
     verdict = "yes" if summary["net"]["ann_return_%"] > 0 else "no"
     print(f"\nDid it make money out of sample after costs? {verdict}. "

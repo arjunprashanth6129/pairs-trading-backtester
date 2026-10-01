@@ -1,6 +1,6 @@
 {
-  "generated_utc": "2026-08-21T02:43:00+00:00",
-  "git_hash": "22b085dc9b79d001b91fe155af286da853639809-dirty",
+  "generated_utc": "2026-10-01T08:09:02+00:00",
+  "git_hash": "00591eda1c1e2688718e30e504c3acd0c63006a9-dirty",
   "python": "3.14.5",
   "platform": "macOS-26.6-arm64-arm-64bit-Mach-O",
   "config": {
@@ -192,23 +192,23 @@
       "trading_end": "2026-06-30"
     }
   ],
-  "n_trades": 1008,
+  "n_trades": 242,
   "oos_days": 2347,
   "headline": {
     "gross": {
-      "total_return_%": 10.11422820537895,
-      "ann_return_%": 1.0398694925300989,
-      "ann_vol_%": 9.53801553173242,
-      "sharpe": -0.5200379985719081,
-      "max_drawdown_%": -21.23959613583696,
+      "total_return_%": 12.49208964864561,
+      "ann_return_%": 1.2719154572163216,
+      "ann_vol_%": 7.272466116468776,
+      "sharpe": -0.6501349703200062,
+      "max_drawdown_%": -13.5941178408855,
       "days": 2347
     },
     "net": {
-      "total_return_%": -61.813195717935486,
-      "ann_return_%": -9.820137719761535,
-      "ann_vol_%": 9.575348350936268,
-      "sharpe": -1.65217359619242,
-      "max_drawdown_%": -62.156424189644355,
+      "total_return_%": -11.431474439261724,
+      "ann_return_%": -1.294959249811356,
+      "ann_vol_%": 7.301398178050868,
+      "sharpe": -0.999118123942498,
+      "max_drawdown_%": -20.17365885782355,
       "days": 2347
     }
   }

@@ -25,6 +25,7 @@ class PairResult:
     position: pd.Series
     ret_gross: pd.Series   # daily return on capital_per_pair, before costs
     ret_net: pd.Series     # after costs
+    cost_1bp: pd.Series    # the cost line at 1 bp per leg, for the cost sweep
     trades: pd.DataFrame
 
 
@@ -42,7 +43,7 @@ def run_pair(
     """Trade one pair across one trading window.
 
     Position sizing fixes GROSS notional at `capital`: one unit of the y leg plus
-    |beta| units of the x leg. Sizing on gross rather than net is the honest
+    |beta| units of the x leg. Sizing on gross rather than net is the conservative
     choice for a long-short book, because both legs are real positions that must
     be financed and both incur cost.
     """
@@ -54,8 +55,7 @@ def run_pair(
     n = len(trading)
     pos = position_series(trades, n)
     units = np.zeros(n)
-    cost = np.zeros(n)
-    rate = bps_per_leg / 10_000.0
+    cost_1bp = np.zeros(n)   # cost is linear in the rate, so keep it per bp
     yv, xv = y.to_numpy(float), x.to_numpy(float)
     per_unit = np.abs(yv) + abs(params.beta) * np.abs(xv)
 
@@ -66,10 +66,11 @@ def run_pair(
         # Both legs are charged, on entry and again on exit: four chargeable
         # legs per round trip. Pairs trading turns over often, so this is the
         # line item most likely to decide whether the strategy works.
-        c_in = rate * u * per_unit[t.entry_i]
-        c_out = rate * u * per_unit[t.exit_i]
-        cost[t.entry_i] += c_in
-        cost[t.exit_i] += c_out
+        c_in = 1e-4 * u * per_unit[t.entry_i]
+        c_out = 1e-4 * u * per_unit[t.exit_i]
+        cost_1bp[t.entry_i] += c_in
+        cost_1bp[t.exit_i] += c_out
+        c_in, c_out = bps_per_leg * c_in, bps_per_leg * c_out
 
         d_sp = float(sp.iloc[t.exit_i] - sp.iloc[t.entry_i])
         gross = t.side * u * d_sp
@@ -95,6 +96,7 @@ def run_pair(
     pnl_gross = np.zeros(n)
     pnl_gross[1:] = pos[:-1] * units[:-1] * d[1:]
 
+    cost = bps_per_leg * cost_1bp
     idx = trading.index
     return PairResult(
         params=params,
@@ -104,6 +106,7 @@ def run_pair(
         position=pd.Series(pos, index=idx),
         ret_gross=pd.Series(pnl_gross / capital, index=idx),
         ret_net=pd.Series((pnl_gross - cost) / capital, index=idx),
+        cost_1bp=pd.Series(cost_1bp / capital, index=idx),
         trades=pd.DataFrame(rows),
     )
 
@@ -117,13 +120,31 @@ def combine(results: list[PairResult], index: pd.DatetimeIndex) -> pd.DataFrame:
     the days the strategy had no conviction.
     """
     if not results:
-        return pd.DataFrame(
-            {"ret_gross": 0.0, "ret_net": 0.0}, index=index).astype(float)
+        return pd.DataFrame({"ret_gross": 0.0, "ret_net": 0.0, "cost_1bp": 0.0},
+                            index=index).astype(float)
 
     g = pd.concat([r.ret_gross.rename(i) for i, r in enumerate(results)], axis=1)
     n = pd.concat([r.ret_net.rename(i) for i, r in enumerate(results)], axis=1)
+    c = pd.concat([r.cost_1bp.rename(i) for i, r in enumerate(results)], axis=1)
     out = pd.DataFrame({
         "ret_gross": g.reindex(index).fillna(0.0).mean(axis=1),
         "ret_net": n.reindex(index).fillna(0.0).mean(axis=1),
+        "cost_1bp": c.reindex(index).fillna(0.0).mean(axis=1),
     })
     return out.fillna(0.0)
+
+
+def pick_example(results: list[PairResult]) -> PairResult | None:
+    """The pair-window used to illustrate the mechanism in the figure and on the site.
+
+    It has to show both outcomes the strategy produces, a spread that reverts
+    and one that keeps going and is stopped out, because a stop is the more
+    common of the two. Ranked by reversions, then by stops.
+    """
+    def count(r, reason):
+        return int((r.trades["reason"] == reason).sum()) if len(r.trades) else 0
+
+    both = [r for r in results if count(r, "reverted") and count(r, "stop")]
+    pool = both or [r for r in results if len(r.trades)]
+    return max(pool, key=lambda r: (count(r, "reverted"), count(r, "stop")),
+               default=None)

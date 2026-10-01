@@ -46,6 +46,21 @@ def test_stop_loss_fires_when_the_spread_keeps_diverging():
     assert len(t) == 1 and t[0].reason == "stop"
 
 
+def test_no_entry_while_the_spread_is_past_the_stop():
+    """A stopped-out pair whose spread stays wide must not be re-entered.
+
+    Before this rule existed, a broken pair was entered, stopped the next bar
+    and re-entered in a loop: 816 of the first run's 1,008 trades.
+    """
+    t = generate(z(0, 2.2, 4.5, 5.0, 4.8, 5.2, 4.6), E, X, S, H)
+    assert len(t) == 1 and t[0].reason == "stop"
+
+
+def test_re_entry_is_allowed_once_the_spread_is_back_inside_the_stop():
+    t = generate(z(0, 2.2, 4.5, 5.0, 3.0, 0.2, 0.0), E, X, S, H)
+    assert [tr.reason for tr in t] == ["stop", "reverted"]
+
+
 def test_timeout_closes_a_trade_that_never_reverts():
     path = [0, 2.5] + [1.5] * 30          # entered, drifts, never reverts
     t = generate(z(*path), E, X, S, max_holding_days=10)

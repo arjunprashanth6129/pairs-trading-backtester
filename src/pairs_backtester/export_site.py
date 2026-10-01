@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 
 from . import config, data, metrics
-from .backtest import combine, run_pair
+from .backtest import pick_example, run_pair
 from .pairs import select_pairs
 
 
@@ -49,16 +49,16 @@ def build(cfg=None) -> dict:
     w = cfg["windows"]
     windows = data.make_windows(prices.index, w["formation_months"],
                                 w["trading_months"], w["step_months"])
-    best, best_res = None, None
+    candidates = []
     for win in windows:
         f, t = data.slice_formation(prices, win), data.slice_trading(prices, win)
         for pp in select_pairs(f, sel["pvalue_threshold"], sel["max_pairs"],
                                sel["min_observations"], sel["min_spread_std"]):
-            r = run_pair(t, pp, win.index, s["entry_z"], s["exit_z"], s["stop_z"],
-                         s["max_holding_days"], cfg["costs"]["bps_per_leg"],
-                         b["capital_per_pair"])
-            if len(r.trades) and (best is None or len(r.trades) > best):
-                best, best_res = len(r.trades), r
+            candidates.append(run_pair(t, pp, win.index, s["entry_z"], s["exit_z"],
+                                       s["stop_z"], s["max_holding_days"],
+                                       cfg["costs"]["bps_per_leg"],
+                                       b["capital_per_pair"]))
+    best_res = pick_example(candidates)
 
     example = None
     if best_res is not None:
@@ -86,6 +86,55 @@ def build(cfg=None) -> dict:
         }
 
     by_reason = trades["reason"].value_counts().to_dict() if len(trades) else {}
+
+    # Where the gross P&L came from, by how each trade ended. This is the table
+    # the result turns on: reversions earn, stops give it back.
+    exits = []
+    for reason in ("reverted", "stop", "timeout", "window_end"):
+        g = trades[trades["reason"] == reason]
+        if len(g):
+            exits.append({
+                "reason": reason, "n": int(len(g)),
+                "gross": round(float(g["pnl_gross"].sum()), 0),
+                "cost": round(float(g["cost"].sum()), 0),
+                "net": round(float(g["pnl_net"].sum()), 0),
+                "median_hold": float(g["holding_days"].median()),
+            })
+
+    # Calendar-year returns, compounded from the daily series.
+    annual = []
+    for year, g in port.groupby(port.index.year):
+        annual.append({
+            "year": int(year),
+            "days": int(len(g)),
+            "gross": round(float(((1 + g["ret_gross"]).prod() - 1) * 100), 2),
+            "net": round(float(((1 + g["ret_net"]).prod() - 1) * 100), 2),
+        })
+
+    # Did a stronger cointegration test pick better pairs?
+    joined = trades.merge(picks.rename(columns={"index": "window"})
+                          [["window", "pair", "pvalue", "half_life"]],
+                          on=["window", "pair"], how="left")
+    by_pvalue = []
+    for lo, hi in ((0.0, 0.01), (0.01, 0.03), (0.03, sel["pvalue_threshold"])):
+        g = joined[(joined["pvalue"] > lo) & (joined["pvalue"] <= hi)]
+        if len(g):
+            by_pvalue.append({
+                "lo": lo, "hi": hi, "n": int(len(g)),
+                "stop_rate": round(float((g["reason"] == "stop").mean()), 4),
+                "reverted_rate": round(float((g["reason"] == "reverted").mean()), 4),
+                "avg_gross": round(float(g["pnl_gross"].mean()), 1),
+            })
+
+    rev = joined[joined["reason"] == "reverted"]
+    reversion = {
+        "n": int(len(rev)),
+        "median_hold": float(rev["holding_days"].median()) if len(rev) else None,
+        "median_half_life": round(float(rev["half_life"].median()), 2) if len(rev) else None,
+        "median_hold_over_half_life": round(
+            float((rev["holding_days"] / rev["half_life"]).median()), 2) if len(rev) else None,
+        "median_entry_abs_z": round(float(rev["entry_z"].abs().median()), 3) if len(rev) else None,
+    }
     top_pairs = (picks.groupby("pair")
                  .agg(times_selected=("pair", "size"),
                       median_pvalue=("pvalue", "median"),
@@ -119,6 +168,11 @@ def build(cfg=None) -> dict:
         },
         "cost_sensitivity": sens.round(4).to_dict(orient="records"),
         "trades_by_reason": by_reason,
+        "exits": exits,
+        "annual": annual,
+        "by_pvalue": by_pvalue,
+        "reversion": reversion,
+        "capital_per_pair": b["capital_per_pair"],
         "top_pairs": top_pairs.round(4).to_dict(orient="records"),
         "example": example,
     }

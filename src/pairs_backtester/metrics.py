@@ -83,38 +83,22 @@ def market_neutrality(
 
 
 def cost_sensitivity(
-    trades: pd.DataFrame,
     gross_returns: pd.Series,
-    capital: float,
+    cost_1bp: pd.Series,
     bps_grid: list[float],
     trading_days: int = 252,
     rf_annual: float = 0.0,
-    n_pairs_avg: float = 1.0,
 ) -> pd.DataFrame:
     """Re-price the same trades at a range of cost assumptions.
 
-    The trades themselves never change: the signal did not depend on costs, so
-    the honest sensitivity holds the strategy fixed and varies only the charge.
-    This locates the break-even cost, which is a far more useful statement than
-    a single verdict at one assumed rate.
+    The trades never change, because the signal does not depend on costs. Cost
+    is linear in the rate, so the daily cost line at 1 bp per leg, scaled, gives
+    the exact net return at any other rate. At the configured rate this
+    reproduces the backtest's own net figures.
     """
-    if trades is None or len(trades) == 0:
-        return pd.DataFrame()
-
-    # Cost per round trip is (rate * capital) at entry and again at exit, so
-    # total charged notional is 2 * capital per trade, independent of prices.
-    per_trade_notional = 2.0 * capital
     rows = []
     for bps in bps_grid:
-        rate = bps / 10_000.0
-        daily_cost = pd.Series(0.0, index=gross_returns.index)
-        charge = rate * per_trade_notional / capital  # as a return on capital
-        for _, tr in trades.iterrows():
-            # Split the round-trip charge across its entry and exit dates.
-            for d in (tr["entry_date"], tr["exit_date"]):
-                if d in daily_cost.index:
-                    daily_cost.loc[d] += charge / 2.0 / max(n_pairs_avg, 1.0)
-        net = gross_returns - daily_cost
+        net = gross_returns - bps * cost_1bp
         m = summarise(net, trading_days, rf_annual)
         rows.append({"bps_per_leg": bps, **m})
     return pd.DataFrame(rows)

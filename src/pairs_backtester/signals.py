@@ -65,6 +65,11 @@ def generate(
         book = i + 1  # the bar the decision is executed on
 
         if pos == FLAT:
+            # A spread already past the stop is not an entry. Without this check
+            # a pair that breaks down is entered, stopped the next bar, entered
+            # again, and so on, paying four legs of cost on every loop.
+            if abs(v) >= stop_z:
+                continue
             if v >= entry_z:
                 pos, entry_i, entry_val = SHORT, book, v
             elif v <= -entry_z:
