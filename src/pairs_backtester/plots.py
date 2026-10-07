@@ -1,4 +1,4 @@
-"""Figures for the report, on the same palette as the site that presents them.
+"""Figures for the README and the site, on the same palette as the site.
 
 Blue and amber carry the polarity in every chart (gain and loss, before and
 after costs). Green against red separates by a colour distance of about 3.5

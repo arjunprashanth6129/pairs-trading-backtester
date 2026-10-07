@@ -5,8 +5,8 @@ stocks. Pairs are selected by the Engle-Granger test on a 12-month formation
 period and traded over the following 6 months on a fixed z-score rule, with
 costs charged on both legs at entry and exit.
 
-**Live report:** https://arjun-quant-projects.vercel.app/pairs-trading
-&nbsp;·&nbsp; **Full write-up:** [the report](docs/REPORT.md)
+**Paper (PDF):** [Cointegration-Based Pairs Trading in Indian Bank Stocks](https://arjun-quant-projects.vercel.app/papers/pairs-trading-indian-banks.pdf)
+&nbsp;·&nbsp; **Interactive version:** https://arjun-quant-projects.vercel.app/pairs-trading
 
 ---
 
@@ -50,7 +50,7 @@ break-even cost is 9.8 bps per leg. The strategy is market-neutral, with an R² 
 
 ![Gross P&L by exit reason, then costs](https://arjun-quant-projects.vercel.app/figures/pairs/pnl-by-exit.png)
 
-The [report](docs/REPORT.md) sets out the method, the full results, the
+The [paper](https://arjun-quant-projects.vercel.app/papers/pairs-trading-indian-banks.pdf) sets out the method, the full results, the
 correction of an entry-rule error that had overstated the after-cost loss by 8.5
 percentage points a year, and the limitations.
 
@@ -130,8 +130,9 @@ tests/            31 tests: hedge ratio, cointegration, signals, lookahead
 config/           every setting
 data/cache/       price cache, gitignored and regenerable
 results/          committed artifacts from the last run
-docs/REPORT.md    the full write-up
 docs/figures/     committed figures from the last run
+paper/            the paper: LaTeX source, PDF, and make_assets.py, which
+                  generates its numbers, tables and figures
 ```
 
 `signals.py` maps a z-score series to trades, so the entry and exit rules can be
@@ -249,8 +250,8 @@ make test
 In order of priority:
 
 - **Limit how many selected pairs share one bank.** The worst window lost
-  ₹43,737 before costs, mostly on three positions that were each short Kotak
-  Mahindra Bank.
+  ₹43,737 before costs. Four positions entered on the same day, each short Kotak
+  Mahindra Bank, lost ₹44,660 between them.
 - **Re-test cointegration during the trading window**, using only past data, and
   stop trading a pair once it fails.
 - **A Kalman-filtered hedge ratio** that adapts during the trading window, with
