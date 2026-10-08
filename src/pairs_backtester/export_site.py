@@ -135,11 +135,14 @@ def build(cfg=None) -> dict:
             float((rev["holding_days"] / rev["half_life"]).median()), 2) if len(rev) else None,
         "median_entry_abs_z": round(float(rev["entry_z"].abs().median()), 3) if len(rev) else None,
     }
-    top_pairs = (picks.groupby("pair")
+    # Group by the two banks, not the oriented label: the same pair can be selected
+    # with its legs the other way round in another window.
+    top_pairs = (picks.assign(pair=["~".join(sorted(yx)) for yx in zip(picks["y"], picks["x"])])
+                 .groupby("pair")
                  .agg(times_selected=("pair", "size"),
                       median_pvalue=("pvalue", "median"),
                       median_half_life=("half_life", "median"))
-                 .sort_values("times_selected", ascending=False)
+                 .sort_values(["times_selected", "pair"], ascending=[False, True])
                  .head(10).reset_index())
 
     return {

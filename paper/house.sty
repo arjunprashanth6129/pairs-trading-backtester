@@ -19,6 +19,21 @@
 \RequirePackage{amsmath}
 \RequirePackage{booktabs,threeparttable,array}
 \RequirePackage{graphicx}
+% Keep every float inside the section that refers to it, and let a page carry
+% more figures before LaTeX defers them, so figures stay next to their text.
+\RequirePackage[section]{placeins}
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\textfraction}{0.07}
+\renewcommand{\floatpagefraction}{0.75}
+\setcounter{topnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{5}
+% \floatsmayfollow before a \section lets figures still waiting from the previous
+% section be set on the next section's first pages instead of on float pages of
+% their own. Use it after a section whose figures outrun its text.
+\newcommand{\floatsmayfollow}{\let\house@secFB\@fb@secFB
+  \def\@fb@secFB{\global\let\@fb@secFB\house@secFB}}
 \RequirePackage[table]{xcolor}
 \RequirePackage{enumitem}
 \setlist{itemsep=2pt,topsep=4pt,leftmargin=1.6em}
@@ -72,6 +87,9 @@
 \hypersetup{colorlinks=true,linkcolor=accent,citecolor=accent,urlcolor=accent,
             pdfborder={0 0 0}}
 \urlstyle{same}
+% A long address that may break only between its two halves, e.g.
+% \weburl{https://github.com/user/}{repository-name}
+\newcommand{\weburl}[2]{\href{#1#2}{\mbox{\nolinkurl{#1}}\allowbreak\mbox{\nolinkurl{#2}}}}
 
 % ---------------------------------------------------------------- running head
 \RequirePackage{fancyhdr}

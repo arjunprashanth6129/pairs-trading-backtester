@@ -91,7 +91,10 @@ def main(argv: list[str] | None = None) -> int:
             "median_pvalue": float(picks["pvalue"].median()) if len(picks) else None,
             "median_half_life_days": float(
                 picks["half_life"].replace([np.inf], np.nan).median()) if len(picks) else None,
-            "unique_pairs": int(picks["pair"].nunique()) if len(picks) else 0,
+            # A pair is two banks. Its orientation (which leg is y) can change between
+            # windows, so count unordered pairs rather than the oriented labels.
+            "unique_pairs": int(pd.Series([tuple(sorted(yx)) for yx in zip(picks["y"], picks["x"])])
+                                .nunique()) if len(picks) else 0,
         },
     }
 

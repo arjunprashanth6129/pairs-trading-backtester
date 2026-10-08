@@ -79,6 +79,14 @@ def macro(name: str, value) -> None:
     MACROS[name] = str(value)
 
 
+def longdate(d) -> str:
+    """2016-01-01 -> 1~January~2016, for dates in running text."""
+    return pd.Timestamp(d).strftime("%-d %B %Y").replace(" ", "~")
+
+
+WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"]
+
+
 def tsign(x: float, d: int) -> str:
     s = f"{x:+.{d}f}"
     return s.replace("-", "$-$").replace("+", "$+$")
@@ -92,6 +100,20 @@ pairs = pd.read_csv(RES / "selected_pairs.csv")
 daily = pd.read_csv(RES / "daily_returns.csv", parse_dates=["date"], index_col="date")
 costs = pd.read_csv(RES / "cost_sensitivity.csv")
 cap = float(dash["capital_per_pair"])
+
+BANK = {"HDFCBANK.NS": "HDFC Bank", "ICICIBANK.NS": "ICICI Bank", "AXISBANK.NS": "Axis Bank",
+        "KOTAKBANK.NS": "Kotak Mahindra Bank", "SBIN.NS": "State Bank of India",
+        "INDUSINDBK.NS": "IndusInd Bank", "FEDERALBNK.NS": "Federal Bank",
+        "BANKBARODA.NS": "Bank of Baroda", "PNB.NS": "Punjab National Bank",
+        "CANBK.NS": "Canara Bank", "IDFCFIRSTB.NS": "IDFC First Bank"}
+
+
+def banks(a_: str, b_: str) -> str:
+    """A pair is two banks; which one is the dependent leg can change between windows."""
+    return "~".join(sorted([a_, b_]))
+
+
+pk = pairs.assign(banks=[banks(y, x) for y, x in zip(pairs["y"], pairs["x"])])
 
 # ---------------------------------------------------------------- design
 macro("NUniverse", len(meta["universe"]))
@@ -107,10 +129,10 @@ macro("MaxHold", meta["max_holding_days"])
 macro("BpsLeg", f"{meta['bps_per_leg']:.0f}")
 macro("PThreshold", num(meta["pvalue_threshold"], 2))
 macro("MaxPairs", meta["max_pairs"])
-macro("SampleStart", meta["start"])
-macro("SampleEnd", meta["end"])
-macro("OOSStart", meta["oos_start"])
-macro("OOSEnd", meta["oos_end"])
+macro("SampleStart", longdate(meta["start"]))
+macro("SampleEnd", longdate(meta["end"]))
+macro("OOSStart", longdate(meta["oos_start"]))
+macro("OOSEnd", longdate(meta["oos_end"]))
 g, n = summary["gross"], summary["net"]
 macro("OOSDays", f"{g['days']:,}".replace(",", "{,}"))
 macro("Capital", inr(cap))
@@ -242,6 +264,37 @@ for gi, (gname, t) in enumerate(tp.groupby("group", observed=True)):
 Formation $p$-value & Trades & Stopped out (\%) & Converged (\%) & Mean gross P\&L \\
 \midrule
 """ + "\n".join(grp_rows) + "\n\\bottomrule\n\\end{tabular}\n")
+tb = trades.assign(banks=[banks(*p_.split("~")) for p_ in trades["pair"]])
+agg = (pk.groupby("banks").agg(sel=("index", "size"), p=("pvalue", "median"), hl=("half_life", "median"))
+       .join(tb.groupby("banks").agg(n=("reason", "size"),
+                                     conv=("reason", lambda r: int((r == "reverted").sum())),
+                                     stops=("reason", lambda r: int((r == "stop").sum())),
+                                     gross=("pnl_gross", "sum")))
+       .fillna(0))
+rp = agg[agg["sel"] >= 3].sort_values(["sel", "gross"], ascending=[False, False])
+tp_rows = []
+for k_, r_ in rp.iterrows():
+    a_, b_ = k_.split("~")
+    tp_rows.append(rf"{BANK[a_]} / {BANK[b_]} & {int(r_.sel)} & {r_.p:.3f} & {r_.hl:.1f} & "
+                   rf"{int(r_.n)} & {int(r_.conv)} & {int(r_.stops)} & {inr(r_.gross)} \\")
+(TAB / "toppairs.tex").write_text(r"""\begin{tabular}{@{}lrrrrrrr@{}}
+\toprule
+ & & \multicolumn{2}{c}{Formation, median} & \multicolumn{3}{c}{Trades} & \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-7}
+Pair & Windows & $p$-value & Half-life & All & Converged & Stopped & Gross P\&L \\
+\midrule
+""" + "\n".join(tp_rows) + "\n\\bottomrule\n\\end{tabular}\n")
+macro("NRepeat", WORDS[len(rp)])
+macro("NRepeatLoss", WORDS[int((rp["gross"] < 0).sum())])
+macro("RepeatStopShare", pc(100 * rp["stops"].sum() / rp["n"].sum(), 1))
+
+rv_ = tp[tp["reason"] == "reverted"].copy()
+rv_["pred"] = np.log2(rv_["entry_z"].abs() / meta["exit_z"]) * rv_["half_life"]
+macro("ConvPredRatio", num((rv_["holding_days"] / rv_["pred"]).median(), 2))
+macro("ConvPredCorr", num(np.corrcoef(rv_["pred"], rv_["holding_days"])[0, 1], 2))
+macro("ConvHoldMin", int(rv_["holding_days"].min()))
+macro("ConvHoldMax", int(rv_["holding_days"].max()))
+
 ct = pd.crosstab(tp["group"], tp["reason"] == "stop")
 chi2, chip, dof, _ = stats.chi2_contingency(ct, correction=False)
 macro("ChiTwo", num(chi2, 2))
@@ -261,28 +314,30 @@ worst_w = int(win_pnl.idxmin())
 macro("WorstWindowLoss", inr(abs(win_pnl.min())))
 macro("TotalGross", inr(trades["pnl_gross"].sum()))
 ww = pairs[pairs["index"] == worst_w]
-macro("WorstWindowStart", ww["trading_start"].iloc[0])
+macro("WorstWindowStart", longdate(ww["trading_start"].iloc[0]))
 legs = pd.concat([pairs["y"], pairs["x"]]).groupby(pd.concat([pairs["index"], pairs["index"]])).value_counts()
 macro("NConcentrated", int((legs.groupby(level=0).max() >= 3).sum()))
 kotak = trades[(trades["window"] == worst_w) & (trades["pair"].str.contains("KOTAKBANK"))
                & (trades["entry_date"] == trades.loc[trades["window"] == worst_w, "entry_date"].mode()[0])]
 macro("KotakSameDay", len(kotak))
 macro("KotakPairsSelected", int(ww["pair"].str.contains("KOTAKBANK").sum()))
-macro("KotakEntry", kotak["entry_date"].iloc[0].date().isoformat())
+# The text reads "Four of the five pairs selected ... all four were entered on the same day".
+assert int(ww["pair"].str.contains("KOTAKBANK").sum()) == 4 and len(ww) == 5
+macro("KotakEntry", longdate(kotak["entry_date"].iloc[0]))
 psb = kotak[~kotak["pair"].str.contains("FEDERALBNK")]
 fed = kotak[kotak["pair"].str.contains("FEDERALBNK")]
 assert len(psb) == 3 and len(fed) == 1 and psb["exit_date"].nunique() == 1
-macro("KotakExit", psb["exit_date"].iloc[0].date().isoformat())
+macro("KotakExit", longdate(psb["exit_date"].iloc[0]))
 macro("KotakEach", inr(round(abs(psb["pnl_gross"].mean()), -2)))
-macro("KotakFedExit", fed["exit_date"].iloc[0].date().isoformat())
+macro("KotakFedExit", longdate(fed["exit_date"].iloc[0]))
 macro("KotakFedLoss", inr(abs(fed["pnl_gross"].iloc[0])))
 macro("KotakSameDayLoss", inr(abs(kotak["pnl_gross"].sum())))
 axfed = trades[(trades["pair"] == "AXISBANK.NS~FEDERALBNK.NS") & (trades["entry_date"].dt.year == 2020)]
-macro("AxisFedStops", int((axfed["reason"] == "stop").sum()))
+macro("AxisFedStops", WORDS[int((axfed["reason"] == "stop").sum())])
 macro("AxisFedLoss", inr(abs(axfed["pnl_gross"].sum())))
 iid = trades[trades["pair"].str.contains("INDUSINDBK") & trades["pair"].str.contains("IDFCFIRSTB")
              & (trades["entry_date"].dt.year == 2020)]
-macro("IndIdfcTrades", len(iid))
+macro("IndIdfcTrades", WORDS[len(iid)])
 macro("IndIdfcLoss", inr(abs(iid["pnl_gross"].sum())))
 
 # ---------------------------------------------------------------- costs and exposure
@@ -303,8 +358,12 @@ macro("RsqMkt", num(100 * ne["r_squared"], 1))
 exm = dash["example"]
 macro("ExP", num(exm["pvalue"], 3))
 macro("ExHalfLife", num(exm["half_life"], 1))
-top = dash["top_pairs"][0]
-macro("ExTimesSelected", top["times_selected"])
+assert pk["banks"].nunique() == sel["unique_pairs"]
+times = pk.groupby("banks").size()
+ex_times = int(times[banks(exm["y"], exm["x"])])
+assert ex_times == times.max()
+macro("ExTimesSelected", WORDS[ex_times])
+macro("NTopPairs", WORDS[int((times == times.max()).sum())])
 
 # ---------------------------------------------------------------- pre-correction run
 def git_file(path: str) -> str:
@@ -424,6 +483,93 @@ b.set_xlabel("Cost per leg (bps)")
 b.set_ylabel("Annualised return after costs (%)")
 panel(b, "Panel B. Sensitivity to the cost assumption")
 fig.savefig(FIG / "years_costs.pdf")
+plt.close(fig)
+
+# Exit types: where the gross profit went, and how long each kind of trade lasted
+short = {"reverted": "Converged", "stop": "Stopped out", "timeout": "Timed out",
+         "window_end": "Period ended"}
+fig, (a, b) = plt.subplots(1, 2, figsize=(WIDTH, 2.7),
+                           gridspec_kw={"width_ratios": [1.3, 1], "wspace": 0.34})
+labs, bot, hgt, col, val = [], [], [], [], []
+run = 0.0
+for r in order:
+    v_ = trades.loc[trades["reason"] == r, "pnl_gross"].sum() / 1e3
+    labs.append(short[r]); bot.append(min(run, run + v_)); hgt.append(abs(v_))
+    col.append(BLUE if v_ >= 0 else ORANGE); val.append(v_)
+    run += v_
+labs.append("Before costs"); bot.append(min(0, run)); hgt.append(abs(run)); col.append(GREY); val.append(run)
+cst = trades["cost"].sum() / 1e3
+labs.append("Costs"); bot.append(run - cst); hgt.append(cst); col.append(ORANGE); val.append(-cst)
+run -= cst
+labs.append("After costs"); bot.append(min(0, run)); hgt.append(abs(run)); col.append(GREY); val.append(run)
+xw = np.arange(len(labs))
+a.bar(xw, hgt, bottom=bot, color=col, width=0.62)
+tops = [b_ + h_ for b_, h_ in zip(bot, hgt)]
+for i_ in range(len(labs) - 1):
+    level = tops[i_] if val[i_] >= 0 and labs[i_] not in ("Before costs", "After costs") else bot[i_]
+    if labs[i_] in ("Before costs", "After costs"):
+        level = val[i_]
+    a.plot([i_ + 0.31, i_ + 0.69], [level, level], color=GREY, lw=0.6)
+for i_, v_ in enumerate(val):
+    txt = f"{v_:+.1f}".replace("-", "\u2212")
+    if abs(v_) > 150:  # long bars carry their label inside
+        a.text(i_, bot[i_] + hgt[i_] / 2, txt, ha="center", va="center", fontsize=6.8,
+               color="white", rotation=90)
+    else:
+        y_ = tops[i_] + 6 if v_ >= 0 else bot[i_] - 6
+        a.text(i_, y_, txt, ha="center", va="bottom" if v_ >= 0 else "top", fontsize=6.8)
+a.axhline(0, color=INK, lw=0.6)
+a.set_xticks(xw, labs, rotation=30, ha="right", rotation_mode="anchor", fontsize=7)
+a.set_ylabel("INR thousands")
+a.set_ylim(-90, 370)
+a.grid(axis="x", visible=False)
+panel(a, "Panel A. Gross P&L by exit type, then costs")
+for i_, r in enumerate(order):
+    h_ = trades.loc[trades["reason"] == r, "holding_days"].to_numpy()
+    jit = np.random.default_rng(i_).uniform(-0.24, 0.24, len(h_))
+    b.scatter(h_, np.full(len(h_), i_) + jit, s=6, lw=0, alpha=0.65,
+              color={"reverted": BLUE, "stop": ORANGE}.get(r, GREY))
+    b.plot([np.median(h_)] * 2, [i_ - 0.34, i_ + 0.34], color=INK, lw=1.4)
+b.set_yticks(range(len(order)), [short[r] for r in order])
+b.set_ylim(len(order) - 0.5, -0.5)
+b.set_xlim(-1, meta["max_holding_days"] + 2)
+b.set_xlabel("Trading days held")
+b.grid(axis="y", visible=False)
+panel(b, "Panel B. Days held, with the median")
+fig.savefig(FIG / "exits.pdf")
+plt.close(fig)
+
+# What the formation period predicts: speed of convergence, and stop-outs by p-value
+fig, (a, b) = plt.subplots(1, 2, figsize=(WIDTH, 2.7),
+                           gridspec_kw={"width_ratios": [1, 1.1], "wspace": 0.32})
+a.plot([0, 40], [0, 40], color=INK, lw=0.7, ls=(0, (3, 2)))
+a.scatter(rv_["pred"], rv_["holding_days"], s=12, color=BLUE, alpha=0.75, lw=0)
+a.set_xlim(0, 40)
+a.set_ylim(0, meta["max_holding_days"] + 2)
+a.set_xlabel("Predicted days to converge")
+a.set_ylabel("Days held")
+a.text(1.5, meta["max_holding_days"] - 2,
+       f"median ratio {(rv_['holding_days'] / rv_['pred']).median():.2f}\n"
+       f"correlation {np.corrcoef(rv_['pred'], rv_['holding_days'])[0, 1]:.2f}",
+       fontsize=7, va="top")
+panel(a, "Panel A. Converged trades")
+grp_ = list(tp.groupby("group", observed=True))
+xg = np.arange(len(grp_))
+sr = [100 * (g_["reason"] == "stop").mean() for _, g_ in grp_]
+cr_ = [100 * (g_["reason"] == "reverted").mean() for _, g_ in grp_]
+b.bar(xg - 0.19, sr, width=0.38, color=ORANGE, label="Stopped out")
+b.bar(xg + 0.19, cr_, width=0.38, color=BLUE, label="Converged")
+for i_, (s_, c_) in enumerate(zip(sr, cr_)):
+    b.text(i_ - 0.19, s_ + 1.2, f"{s_:.0f}", ha="center", fontsize=6.8)
+    b.text(i_ + 0.19, c_ + 1.2, f"{c_:.0f}", ha="center", fontsize=6.8)
+b.set_xticks(xg, [f"{labels[i_]}\n{len(g_)} trades" for i_, (_, g_) in enumerate(grp_)])
+b.set_xlabel("Formation $p$-value")
+b.set_ylabel("Share of trades (%)")
+b.set_ylim(0, 75)
+b.grid(axis="x", visible=False)
+b.legend(loc="upper right", ncol=2)
+panel(b, "Panel B. Outcome by formation $p$-value")
+fig.savefig(FIG / "formation.pdf")
 plt.close(fig)
 
 lines = ["% Generated by paper/make_assets.py. Do not edit by hand."]

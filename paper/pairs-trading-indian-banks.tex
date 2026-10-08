@@ -9,9 +9,9 @@
 \author{Arjun Prashanth\thanks{Email: \href{mailto:arjunprashanth6129@gmail.com}{arjunprashanth6129@gmail.com}.
   Code, tests, results and the script that generates every number, table and
   figure in this paper are at
-  \url{https://github.com/arjunprashanth6129/pairs-trading-backtester}. An
-  interactive version of the results is at
-  \url{https://arjun-quant-projects.vercel.app/pairs-trading}.}}
+  \weburl{https://github.com/arjunprashanth6129/}{pairs-trading-backtester}. An
+  interactive summary of the results is at
+  \weburl{https://arjun-quant-projects.vercel.app/}{pairs-trading}.}}
 \date{October 2026}
 \keywords{pairs trading; statistical arbitrage; cointegration; walk-forward
   backtest; transaction costs; market neutrality; Indian banks}
@@ -71,8 +71,8 @@ that fail if the separation is broken.
 The strategy works as a hedge and fails as a source of return. Its beta to the
 Nifty 50 is close to zero, but its return before costs, \RetG{} a year, is not
 statistically different from zero and is below the risk-free rate. A decomposition
-of the \NTrades{} trades explains why. Trades that converged did so at almost
-exactly the speed the formation period predicted, but \NStop{} of the \NTrades{} were
+of the \NTrades{} trades explains why. Trades that converged did so, on average, at
+the speed the formation period predicted, but \NStop{} of the \NTrades{} were
 stopped out after the spread widened further, and the losses on those trades
 cancelled the gains on the rest. The formation $p$-value carries no information
 about which pairs will hold. The largest single loss came from four simultaneous
@@ -114,7 +114,7 @@ overlap, and together cover January 2017 to June 2026. Pairs are selected and ev
 parameter is estimated in the formation period, and they are then held fixed for
 the whole trading period.
 
-\begin{figure}[t]
+\begin{figure}[tbp]
 \centering
 \begin{tikzpicture}[x=1.45cm,y=0.58cm]
   % One unit is one year from January 2016.
@@ -177,7 +177,7 @@ half-life comes from a discrete approximation to an Ornstein-Uhlenbeck process,
   \Delta s_t = a + \kappa\, s_{t-1} + u_t, \qquad h = -\frac{\ln 2}{\kappa},
 \end{equation}
 estimated on the formation spread. Across the sample, \PairWindows{} pair-windows
-were selected from \UniquePairs{} distinct pairs, with a median $p$-value of
+were selected from \UniquePairs{} distinct pairs of banks, with a median $p$-value of
 \MedianP{} and a median half-life of \MedianHalfLife{} trading days.
 
 \subsection{Trading rule}
@@ -199,7 +199,7 @@ $t+1$. The thresholds are conventional values fixed before the backtest was run;
 they were not chosen by performance, which would introduce look-ahead at the level
 of the parameters.
 
-\begin{figure}[t]
+\begin{figure}[tbp]
 \centering
 \begin{tikzpicture}[
     st/.style={draw=rule, line width=0.5pt, rounded corners=2pt, fill=boxfill,
@@ -264,7 +264,7 @@ profitable before costs and \WinNet{} after. The mean trade earns \rupee\MeanGro
 before costs, \MeanGrossBps{} basis points of its notional, and pays
 \rupee\MeanCost, or \MeanCostBps{} basis points.
 
-\begin{table}[t]
+\begin{table}[tbp]
 \centering
 \caption{Out-of-sample performance}
 \label{tab:performance}
@@ -287,7 +287,7 @@ costs, \SharpeG, because the gross return is below the 6\% risk-free rate. A
 market-neutral portfolio would in practice earn interest on the collateral it
 posts, which this backtest does not credit (Section~\ref{sec:limits}).
 
-\begin{figure}[t]
+\begin{figure}[tbp]
 \centering
 \includegraphics[width=\textwidth]{figures/equity.pdf}
 \caption{Out-of-sample growth of one unit of capital before and after costs
@@ -307,15 +307,15 @@ after-cost series has the same shape and ends \GrowthN{} against \GrowthG.
 
 Figure~\ref{fig:example} shows HDFC Bank against Kotak Mahindra Bank in the first
 trading window. The pair passed the formation test with $p = \ExP$ and a half-life
-of \ExHalfLife{} days, and it is one of the two pairs selected most often, in
-\ExTimesSelected{} of \NWindows{} windows. The window contains every outcome the rule
+of \ExHalfLife{} days, and it is one of \NTopPairs{} pairs selected in
+\ExTimesSelected{} windows, more often than any other. The window contains every outcome the rule
 can produce. The first position opened just above $+2$, kept widening and was
 stopped out in late February. Three short positions, opened between late February
 and late April, each closed when the spread returned near zero. The last, opened in
 late May, was stopped out on the final day of the window as the spread rose above
 $+4$ again.
 
-\begin{figure}[t]
+\begin{figure}[tbp]
 \centering
 \includegraphics[width=\textwidth]{figures/example.pdf}
 \caption{HDFC Bank against Kotak Mahindra Bank, January to June 2017. The line is the
@@ -332,9 +332,10 @@ Table~\ref{tab:exits} divides the \NTrades{} trades by how they closed. The \NCo
 trades that converged earned \rupee\ConvGross{} before costs. The \NStop{} that were
 stopped out lost \rupee\StopGross. The other two exits are small. Stopped trades
 therefore outnumbered converged trades by \StopToConv{} to one, and their losses
-almost exactly cancelled the gains.
+almost exactly cancelled the gains (Figure~\ref{fig:exits}, Panel A). Costs then
+turned a small gross profit into a loss.
 
-\begin{table}[t]
+\begin{table}[tbp]
 \centering
 \caption{Trades by exit type}
 \label{tab:exits}
@@ -355,9 +356,21 @@ for the strategy to break even before costs. The realised share is \RealisedMix{
 threshold in a binomial test ($p = \BinomMixP$). That is why the gross return is
 close to zero. A stop at $|z| = \StopZ$ means the spread moved a further two
 formation standard deviations against the position, and \StopWithinFour{} of the
-\NStop{} stopped trades reached that level within four trading days of entry. For
-more than half of all trades, a relationship that passed a cointegration test over
-the previous twelve months did not hold over the following weeks.
+\NStop{} stopped trades reached that level within four trading days of entry. The
+median stopped trade lasted \StopMedianHold{} days, against \ConvMedianHold{} for a
+converged trade (Figure~\ref{fig:exits}, Panel B). For more than half of all trades,
+a relationship that passed a cointegration test over the previous twelve months did
+not hold over the following weeks.
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=\textwidth]{figures/exits.pdf}
+\caption{Trades by exit type. Panel A builds the gross profit and loss from the four
+exit types, in thousands of rupees, then deducts costs. Panel B shows how many
+trading days each trade was held, one point per trade, with the median of each exit
+type as a vertical bar. Trades that time out are all held for \MaxHold{} days.}
+\label{fig:exits}
+\end{figure}
 
 \subsection{Speed of convergence}
 
@@ -365,24 +378,43 @@ The formation half-life predicts how fast a deviation should decay. For the \NCo
 converged trades, the median holding period is \ConvMedianHold{} trading days and the
 median formation half-life of the corresponding pairs is \ConvHalfLife{} days, a
 ratio of \ConvRatio. That ratio is close to its theoretical value. The median
-converged trade entered at $|z| = \ConvEntryZ$ and exits at \ExitZ, so the deviation
-must shrink by a factor of \ConvDecay, which takes $\log_2 \ConvDecay \approx
-\ConvHalfLives$ half-lives under an autoregressive process. When a spread converged,
-it did so at the rate the formation period estimated. The estimate of speed held out
-of sample; the assumption that the spread would keep reverting did not hold for most
+converged trade entered at $|z| = \ConvEntryZ$ and exited at \ExitZ, so the deviation
+had to shrink by a factor of \ConvDecay, which takes $\log_2 \ConvDecay \approx
+\ConvHalfLives$ half-lives under an autoregressive process.
+
+Figure~\ref{fig:formation}, Panel A, makes the comparison trade by trade. It plots
+each converged trade's holding period against the period predicted by its formation
+half-life $h$ and entry level, $h \log_2(|z_{\mathrm{entry}}|/\ExitZ)$. The median
+ratio of realised to predicted is \ConvPredRatio, so the half-life gets the typical
+speed about right, but it says little about individual trades: realised holding
+periods run from \ConvHoldMin{} to \ConvHoldMax{} days, and their correlation with
+the prediction is \ConvPredCorr. On average, then, the estimate of speed held out of
+sample. The assumption that the spread would keep reverting did not hold for most
 trades.
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=\textwidth]{figures/formation.pdf}
+\caption{What the formation period predicts. Panel A plots each of the \NConv{}
+converged trades' holding period against the period predicted by its formation
+half-life and entry z-score; the dashed line marks equality. Panel B shows the share
+of trades stopped out and converged in each group of formation $p$-values; the
+remaining trades timed out or were open at the end of the trading period.}
+\label{fig:formation}
+\end{figure}
 
 \subsection{Formation \texorpdfstring{$p$}{p}-value and trade outcome}
 
 If the formation $p$-value measured how reliable a pair's relationship would be, a
-smaller $p$-value should come with fewer stop-outs. Table~\ref{tab:pvalue} shows that
-it does not: the group with the smallest $p$-values has the highest stop-out rate. A
+smaller $p$-value should come with fewer stop-outs. Table~\ref{tab:pvalue} and
+Figure~\ref{fig:formation}, Panel B, show that it does not: the group with the
+smallest $p$-values has the highest stop-out rate. A
 $\chi^2$ test of independence between the $p$-value group and stopping out gives
 $\chi^2(\ChiDof) = \ChiTwo$ with $p = \ChiP$. Among pairs that pass the 5\% threshold,
 the $p$-value carries no detectable information about outcomes in the following six
 months, so ranking pairs by it adds nothing beyond the threshold itself.
 
-\begin{table}[t]
+\begin{table}[tbp]
 \centering
 \caption{Trade outcomes by formation-period \texorpdfstring{$p$}{p}-value}
 \label{tab:pvalue}
@@ -394,6 +426,28 @@ Mean gross profit and loss per trade is in rupees.
 \end{tablenote}
 \end{table}
 
+Repeated selection is no better a guide. A pair chosen in several windows has passed
+the test on several different years of prices, which might be expected to signal a
+durable relationship. Table~\ref{tab:toppairs} lists the \NRepeat{} pairs selected
+in three or more windows. Of these, \NRepeatLoss{} lost money before costs, and
+\RepeatStopShare{} of their trades were stopped out, against \ShareStop{} for all
+trades.
+
+\begin{table}[tbp]
+\centering
+\caption{Pairs selected in three or more windows}
+\label{tab:toppairs}
+\footnotesize
+\setlength{\tabcolsep}{4.5pt}
+\input{tables/toppairs}
+\begin{tablenote}
+A pair is identified by its two banks; which bank is the dependent leg can differ
+between windows. The $p$-value and half-life (in trading days) are medians over the
+windows in which the pair was selected. Gross profit and loss is summed over the
+pair's trades, in rupees, before costs.
+\end{tablenote}
+\end{table}
+
 \subsection{Performance by period and concentration}\label{sec:periods}
 
 Before costs the strategy was profitable in \NYearsPos{} of \NFullYears{} full calendar
@@ -401,10 +455,11 @@ years and in \NWindowsPos{} of \NWindows{} trading windows (Figure~\ref{fig:year
 Panel A). The losses are concentrated in a few episodes. In 2020 the strategy lost
 \GrossTwentyTwenty{} before costs. During the COVID-19 sell-off bank stocks fell by
 very different amounts, and two pairs account for most of the loss: Axis Bank
-against Federal Bank was stopped out six times for \rupee\AxisFedLoss{}, and
-IndusInd Bank against IDFC First Bank lost \rupee\IndIdfcLoss{} over seven trades.
+against Federal Bank was stopped out \AxisFedStops{} times for \rupee\AxisFedLoss{}, and
+IndusInd Bank against IDFC First Bank lost \rupee\IndIdfcLoss{} over \IndIdfcTrades{}
+trades.
 
-\begin{figure}[t]
+\begin{figure}[tbp]
 \centering
 \includegraphics[width=\textwidth]{figures/years_costs.pdf}
 \caption{Panel A shows the return in each calendar year before and after costs;
@@ -455,9 +510,9 @@ banks.
 
 The central result concerns persistence. The formation test selects pairs whose
 spreads revert at a measurable speed, and when those spreads converged in the
-trading period they did so at almost exactly that speed. But more than half of the
-trades were stopped out after the spread widened further, and the formation
-$p$-value did not predict which. Passing a cointegration test over one year is
+trading period they did so, on average, at almost exactly that speed. But more than
+half of the trades were stopped out after the spread widened further, and neither
+the formation $p$-value nor repeated selection predicted which. Passing a cointegration test over one year is
 evidence that a relationship held over that year; in this sample it was weak
 evidence that the relationship would hold over the next six months.
 
@@ -514,29 +569,23 @@ the procedure of \citet{johansen1988} for baskets of more than two stocks.
 % ======================================================================
 \section*{Use of AI tools}
 
-I used Claude Code, Anthropic's AI coding assistant, throughout this project, and
-mainly as a tutor. It explained the concepts the strategy depends on before I built
-them: why cointegration and not correlation is the property a convergence trade
-needs, how the Engle-Granger procedure and the half-life regression work, and how
-look-ahead enters a backtest in ways that inflate results without producing an
-error. It also showed me how to make those safeguards testable, by writing tests
-that fail when a mechanism is removed, a practice I have kept since. The entry-rule
-error in Appendix~\ref{app:fix} was found the same way, by breaking the results down
-by exit type instead of reading the headline figure. More generally it taught me how to work with an AI coding
-assistant well: to specify an experiment precisely, to ask for the reasoning behind
-a suggestion and not only the code, and to verify every output independently.
-
-Claude Code also wrote parts of the implementation at my direction, including
-plotting code and the script that generates this paper's numbers, tables and
-figures, and it helped me draft and edit this paper. The research question, the design of the
-strategy and the backtest, and the interpretation of the results are my own. I
-reviewed the code, every number in the paper is generated from the committed
-results, and I take full responsibility for the content.
+The research question, the design of the study, the trading rules and tests, and
+the interpretation of the results are my own. I used Claude Code, Anthropic's AI
+coding assistant, in two supporting roles. The first was as a tutor. When the work
+reached an idea I had not used before, such as why a convergence trade needs
+cointegration rather than correlation, I asked it to explain the idea and then
+checked the explanation against the data before relying on it. The second was implementation: at my direction it wrote parts of the code,
+including the plotting code and the script that generates this paper's numbers,
+tables and figures, and it helped me draft and edit the text. Working this way also
+taught me how to use an AI assistant well, by specifying a task precisely, asking
+for the reasoning behind a suggestion and not only the code, and verifying every
+output. I reviewed everything it produced and take full responsibility for the
+content.
 
 \section*{Data and code availability}
 
 Code, tests and results are available in the project repository,
-\url{https://github.com/arjunprashanth6129/pairs-trading-backtester}. Running the
+\weburl{https://github.com/arjunprashanth6129/}{pairs-trading-backtester}. Running the
 pipeline regenerates every result from prices it downloads and caches on the first
 run, and \code{python paper/make\_assets.py} regenerates every number, table and
 figure in this paper from the committed results.
